@@ -56,7 +56,16 @@ Accept new value [y/n]?
 
   1) test bad expected in the form of string (IntegrationTest)
      integration_test.exs:80
-     ** (AssertValue.ArgumentError) Expected should be in the form of string heredoc (""") or File.read!
+     Expected value is a string
+     Expected value should be in the form of string heredoc (""") or File.read!
+     
+     assert_value "foo" == """
+       foo
+     """
+     
+     assert_value "foo" == File.read!("foo.txt")
+     
+     code: "foo" == "bar"
      stacktrace:
        integration_test.exs:82: (test)
 

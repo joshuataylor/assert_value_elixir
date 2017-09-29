@@ -1,7 +1,24 @@
 defmodule AssertValue do
 
   defmodule ArgumentError do
-    defexception [message: ~S{Expected should be in the form of string heredoc (""") or File.read!}]
+    # We should pass actual code line with error to exception message
+    # because we overwrite tests source during execution but ExUnit
+    # takes code from cached source
+    defexception [:message, :expr]
+
+    def exception(error) do
+      message = error[:message] <> """
+
+      Expected value should be in the form of string heredoc (\"\"\") or File.read!
+
+      assert_value "foo" == \"\"\"
+        foo
+      \"\"\"
+
+      assert_value "foo" == File.read!("foo.txt")
+      """
+      %ExUnit.AssertionError{message: message, expr: error[:expr]}
+    end
   end
 
   # Assertions with right argument like "assert_value actual == expected"
@@ -16,7 +33,7 @@ defmodule AssertValue do
       # till runtime to report it, otherwise it's confusing.  TODO: or
       # maybe not confusing, may want to just put here:
       # _ -> raise AssertValue.ArgumentError
-      _ -> {:unsupported_value, nil}
+      _ -> {:unsupported_expected_value, nil}
     end
 
     quote do
@@ -33,7 +50,8 @@ defmodule AssertValue do
           :file -> File.exists?(expected_file)
             && File.read!(expected_file)
             || ""
-          :unsupported_value -> raise AssertValue.ArgumentError
+          :unsupported_expected_value -> raise AssertValue.ArgumentError, [
+            message: "Bad expected value type", expr: assertion_code]
         end
 
       assertion_result = (actual_value == expected_value)
@@ -56,7 +74,7 @@ defmodule AssertValue do
 
         case decision do
           {:ok, value} -> value
-          {:error, :unsupported_value} -> raise AssertValue.ArgumentError
+          {:error, :unsupported_expected_value, error} -> raise AssertValue.ArgumentError, error
           {:error, :ex_unit_assertion_error, error} -> raise ExUnit.AssertionError, error
         end
 

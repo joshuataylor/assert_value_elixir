@@ -66,8 +66,11 @@ defmodule AssertValue.Server do
         case result do
           {:ok, file_changes} ->
             {:reply, {:ok, opts[:actual_value]}, %{state | file_changes: file_changes}}
-          {:error, :unsupported_value} ->
-            {:reply, {:error, :unsupported_value}, state}
+          {:error, :unsupported_expected_value} ->
+            {:reply, {:error, :unsupported_expected_value, [
+              message: "Expected value is a string",
+              expr: opts[:assertion_code]
+            ]}, state}
         end
       _  ->
         # Fail test. Pass exception up to the caller and throw it there
@@ -126,7 +129,7 @@ defmodule AssertValue.Server do
   end
 
   # Update expected when expected is heredoc
-  # return {:error, :unsupported_value} if not
+  # return {:error, :unsupported_expected_value} if not
   def update_expected(file_changes, :source, source_filename, original_line_number,
                       actual, expected, _) do
     expected = to_lines(expected)
@@ -153,7 +156,7 @@ defmodule AssertValue.Server do
         original_line_number, length(new_expected) - length(expected))}
     # If heredoc closing line is not found then right argument is a string
     else
-      {:error, :unsupported_value}
+      {:error, :unsupported_expected_value}
     end
   end
 
